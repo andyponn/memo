@@ -1,7 +1,6 @@
 > **Last updated：** 2025.01.03
 > **Author:** 陳葳芃 Andypon
 
----
 
 ## 程式目的
 
