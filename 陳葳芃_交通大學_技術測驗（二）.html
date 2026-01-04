@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 個案管理追蹤看板</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .risk-high { background-color: #dc3545; color: white; }
+        .risk-mid { background-color: #ffc107; color: black; }
+        .risk-low { background-color: #198754; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    <h2 class="mb-4 text-primary"><i class="fas fa-user-nurse me-2"></i>工研醫院 | 個案管理系統 (CMS) 追蹤看板</h2>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm stat-card border-start border-4 border-primary">
+                <div class="card-body">
+                    <h5 class="card-title text-secondary">總個案數</h5>
+                    <h2 class="fw-bold" id="totalCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm stat-card border-start border-4 border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-secondary">待追蹤人數</h5>
+                    <h2 class="fw-bold" id="pendingCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm stat-card border-start border-4 border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-secondary">高風險人數</h5>
+                    <h2 class="fw-bold text-danger" id="highRiskCount">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fas fa-plus-circle me-1"></i> 新增個案
+                </div>
+                <div class="card-body">
+                    <form id="addCaseForm">
+                        <div class="mb-3">
+                            <label for="caseName" class="form-label">姓名</label>
+                            <input type="text" class="form-control" id="caseName" required placeholder="請輸入姓名">
+                        </div>
+                        <div class="mb-3">
+                            <label for="caseId" class="form-label">病歷號</label>
+                            <input type="text" class="form-control" id="caseId" required placeholder="例如: A123456789">
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">管理類別</label>
+                            <select class="form-select" id="category" required>
+                                <option value="" selected disabled>請選擇類別</option>
+                                <option value="傷口照護">傷口照護</option>
+                                <option value="產後照護">產後照護</option>
+                                <option value="慢病管理">慢病管理</option>
+                                <option value="長照評估">長照評估</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="riskLevel" class="form-label">風險等級</label>
+                            <select class="form-select" id="riskLevel" required>
+                                <option value="high">高風險 (紅色)</option>
+                                <option value="mid">中風險 (黃色)</option>
+                                <option value="low">低風險 (綠色)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="visitDate" class="form-label">最近訪視日</label>
+                            <input type="date" class="form-control" id="visitDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="summary" class="form-label">初評摘要</label>
+                            <textarea class="form-control" id="summary" rows="3" placeholder="請簡述個案目前狀況..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">提交新增</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fas fa-list me-1"></i> 個案列表
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>姓名 / 病歷號</th>
+                                    <th>管理類別</th>
+                                    <th>初評摘要</th>
+                                    <th>最近訪視日</th>
+                                    <th>風險等級</th>
+                                    <th class="text-center" style="width: 120px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="caseTableBody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>編輯個案資料</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editIndex">
+                
+                <div class="mb-3">
+                    <label class="form-label">姓名</label>
+                    <input type="text" class="form-control" id="editName">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">管理類別</label>
+                    <select class="form-select" id="editCategory">
+                        <option value="傷口照護">傷口照護</option>
+                        <option value="產後照護">產後照護</option>
+                        <option value="慢病管理">慢病管理</option>
+                        <option value="長照評估">長照評估</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">風險等級</label>
+                    <select class="form-select" id="editRisk">
+                        <option value="high">高風險</option>
+                        <option value="mid">中風險</option>
+                        <option value="low">低風險</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">初評摘要 (可修改)</label>
+                    <textarea class="form-control" id="editSummary" rows="4"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveEdit()">儲存變更</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. 初始化資料
+    let cases = [
+        { name: "王小明", id: "A123456789", category: "慢病管理", risk: "high", date: "2023-10-25", summary: "血糖控制不佳，需頻繁訪視" },
+        { name: "李春嬌", id: "B223344556", category: "傷口照護", risk: "mid", date: "2023-10-28", summary: "右腳傷口癒合中，注意感染" },
+        { name: "陳大文", id: "C112233445", category: "產後照護", risk: "low", date: "2023-11-01", summary: "產後恢復良好，情緒穩定" }
+    ];
+
+    const tableBody = document.getElementById('caseTableBody');
+    const totalCountEl = document.getElementById('totalCount');
+    const pendingCountEl = document.getElementById('pendingCount');
+    const highRiskCountEl = document.getElementById('highRiskCount');
+    const form = document.getElementById('addCaseForm');
+    
+    // 定義 Modal 物件變數
+    let editModal; 
+
+    // 2. 渲染表格
+    function renderTable() {
+        tableBody.innerHTML = "";
+        
+        cases.forEach((item, index) => {
+            let badgeClass = "";
+            let riskText = "";
+            switch(item.risk) {
+                case 'high': badgeClass = "bg-danger"; riskText = "高風險"; break;
+                case 'mid': badgeClass = "bg-warning text-dark"; riskText = "中風險"; break;
+                case 'low': badgeClass = "bg-success"; riskText = "低風險"; break;
+            }
+
+            const row = `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${item.name}</div>
+                        <div class="text-muted small">${item.id}</div>
+                    </td>
+                    <td>${item.category}</td>
+                    <td class="text-muted small" style="max-width: 200px;">${item.summary}</td>
+                    <td>${item.date}</td>
+                    <td><span class="badge ${badgeClass}">${riskText}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-outline-primary btn-sm me-1" onclick="openEditModal(${index})" title="編輯">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteCase(${index})" title="刪除">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+        updateStats();
+    }
+
+    // 3. 更新統計
+    function updateStats() {
+        totalCountEl.innerText = cases.length;
+        highRiskCountEl.innerText = cases.filter(c => c.risk === 'high').length;
+        pendingCountEl.innerText = cases.filter(c => c.risk !== 'low').length;
+    }
+
+    // 4. 新增功能
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newCase = {
+            name: document.getElementById('caseName').value,
+            id: document.getElementById('caseId').value,
+            category: document.getElementById('category').value,
+            risk: document.getElementById('riskLevel').value,
+            date: document.getElementById('visitDate').value,
+            summary: document.getElementById('summary').value
+        };
+        cases.unshift(newCase);
+        renderTable();
+        form.reset();
+        alert("個案新增成功！");
+    });
+
+    // 5. 刪除功能
+    function deleteCase(index) {
+        if(confirm("確定要刪除這位個案資料嗎？")) {
+            cases.splice(index, 1);
+            renderTable();
+        }
+    }
+
+    // ============================
+    // 6. 編輯功能相關邏輯 (新功能)
+    // ============================
+    
+    // 初始化 Bootstrap Modal (在頁面載入後執行)
+    document.addEventListener('DOMContentLoaded', function() {
+        editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    });
+
+    // 開啟編輯視窗
+    function openEditModal(index) {
+        // 取出該筆資料
+        const item = cases[index];
+
+        // 將資料填入 Modal 的欄位中
+        document.getElementById('editIndex').value = index; // 記住現在改的是第幾筆
+        document.getElementById('editName').value = item.name;
+        document.getElementById('editCategory').value = item.category;
+        document.getElementById('editRisk').value = item.risk;
+        document.getElementById('editSummary').value = item.summary;
+
+        // 顯示 Modal
+        editModal.show();
+    }
+
+    // 儲存變更
+    function saveEdit() {
+        // 取得隱藏的 Index
+        const index = document.getElementById('editIndex').value;
+        
+        // 更新陣列中的資料
+        cases[index].name = document.getElementById('editName').value;
+        cases[index].category = document.getElementById('editCategory').value;
+        cases[index].risk = document.getElementById('editRisk').value;
+        cases[index].summary = document.getElementById('editSummary').value;
+
+        // 重新渲染表格
+        renderTable();
+
+        // 關閉 Modal
+        editModal.hide();
+    }
+
+    renderTable();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
